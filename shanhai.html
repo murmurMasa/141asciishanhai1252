@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>スイーツ上海</title>
+<script>
+var yama = new Array(3);            //山（3次元配列：３×６×６
+var select1, select2, cnt, message; //選択した牌、削除数、メッセージ
+
+//牌の種類（14種類）　スイーツの絵文字のコード
+var haiCode = ["&#x1f366;", "&#x1f367;", "&#x1f368;", "&#x1f369;", "&#x1f36a;",
+   "&#x1f382;", "&#x1f370;", "&#x1f36b;", "&#x1f36c;", "&#x1f36d;",
+   "&#x1f36e;", "&#x1f36f;", "&#x2615;", "&#x1f374;"];
+
+function init() {
+    //初期化
+    message = document.getElementById("message");   //メッセ―ジ表示エリアのID
+    message.innerText = "";
+    select1 = null; //牌の選択をリセット
+    select2 = null;
+    cnt = 0;
+    //牌を4枚ずつセット
+    var haiArray = [];  //空（から）からの配列haiArrayを作成
+    for (var i = 0; i < haiCode.length; i++) { //牌の種類14個
+        for (var j = 0; j < 4; j++) {
+            haiArray.push(haiCode[i]);
+        }
+    }
+    //牌をシャッフル
+    for (var k=haiArray.length-1; k>0; k--) {   //牌の個数（14種類×4枚=56枚）
+       var l = Math.floor(Math.random()*k);
+       var temp = haiArray[k];                  //k番目の牌とl番目の牌を入れ替える（中：lは小文字のl）
+       haiArray[k] = haiArray[l];
+       haiArray[l] = temp;
+    }
+    //牌を山に配置
+    document.getElementById("yama").innerHTML = ""; //牌山表示エリアID
+    var index = 0;
+    for (var h = yama.length - 1; h >= 0; h--) {    //牌山の段の数（３段）
+       yama[h] = new Array(6);
+       for (var x=0; x<yama[h].length; x++)  {      //牌山の行数（6行）
+           yama[h][x] = new Array(6);
+           for (var y=0; y<yama[h][x].length; y++) {    //牌山の列数（6列）
+              if ((x > 1-h) && (x < 4+h) && (y > 1-h) && (y < 4+h)) {   //牌山の段数に応じた牌をセット　2段目6行×6列、1段目4行×4列、0段目　2行×2列　注：一番上が0で一番下が２
+                 yama[h][x][y] = haiArray[index];
+                 index++;
+                 createHai(h, x, y);
+               } else {
+                 yama[h][x][y] = "";
+               }
+           }
+       }      
+    }
+}
+
+function createHai(h, x, y) {
+    //牌の作成
+    var hai = document.createElement("div");        //div要素を作成
+    hai.id = "hai_"+h+"_"+x+"_"+y;              //牌のid「hai_(段数_(列数)_(行数)」
+    hai.innerHTML = yama[h][x][y];
+    hai.style.top = y * 65 + h * 10 + "px";     //行数yと列数x、段数hを元にした位置に牌の絵文字を表示
+    hai.style.left = x * 50 + h * 10 + "px";
+    hai.onclick = selectHai;                    //牌をクリックしたらselectHai()関数を実行
+    document.getElementById("yama").appendChild(hai);    //牌山表示エリアに追加
+}
+
+function selectHai(event) { //クリックした牌
+   //牌の選択
+   var h = Number(event.target.id.split("_")[1]);   //牌のidよりｈ、ｘ、ｙを取得
+   var x = Number(event.target.id.split("_")[2]);
+   var y = Number(event.target.id.split("_")[3]);
+   if ((select1 == null) && (checkHai(h, x, y))) {  //まだ選択１がなく、クリックした牌が選択可能なら
+      //選択１
+      select1 = event.target;
+      select1.classList.add("selected");            //クラスに「selected」を追加
+   } else if(select1 == event.target) {             //クリックした牌が選択１の牌と同じなら
+      //選択１を解除
+      select1.classList.remove("selected");         //クラスから「selected」を解除
+      select1 = select2;                            //選択２の牌を選択１とみなす
+      select2 = null;   
+   } else if((select2 == null) && (checkHai(h, x, y))) {    //まだ選択２がなく、クリックした牌が選択可能なら
+      //選択２
+      select2 = event.target;
+      select2.classList.add("selected");
+      //判定
+      if (select1.innerHTML == select2.innerHTML) {         //選択１と選択２の絵文字が同じなら
+         //牌を削除
+         removeHai(select1);                                //選択した２つの牌を取り除く
+         removeHai(select2);
+         select1 = null;                                    //選択を解除
+         select2 = null;
+         if (cnt == haiCode.length * 4) {                   //全ての牌を取り除けたら
+            message.innerText = "クリア";   
+       } else if (!checkAll()) {                            //牌が残っており、選択可能な牌がないとき
+          message.innerText = "手詰まり";
+       }
+    }
+   } else if (select2 == event.target) {
+       //選択２を解除
+       select2.classList.remove("selected");
+       select2 = null;
+   }
+}
+
+function checkHai(h, x, y) {
+    //牌が選択可能かどうかを調べる
+    var ret = false;
+    if ((x == 0) || (x == yama[h].length-1)) {               //牌がいちばん下の段の端牌なら選択可能
+       ret = true;
+   } else if ((yama[h][x-1][y] == "") || (yama[h][x+1][y] == "")) { //牌の左右どちからが空いているなら
+      if (h == 0) {                                         //ｈが０（一番上の段）なら選択可能
+         ret = true;
+       } else if (yama[h-1][x][y] == "") {                  //ｈが１または２のとき、その上に牌がなければ選択可能
+          ret = true;
+       } 
+   }
+   return ret;
+}
+
+function removeHai(target) {                                //選択した牌
+   //牌の削除
+   var h = Number(target.id.split("_")[1]);
+   var x = Number(target.id.split("_")[2]);
+   var y = Number(target.id.split("_")[3]);
+   yama[h][x][y] = "";
+   document.getElementById("yama").removeChild(target);     //牌山表示エリアから選択した牌を削除
+   cnt++;
+}
+
+function checkAll() {
+    //全ての牌をチェック
+    var ret = false;
+    var haiArray = [];                                      //配列haiArrayを作成（23行で作成した配列haiArrayとは別物
+    for(var h=0; h<yama.length; h++) {
+        for(var x=0; x<yama[h].length; x++) {
+            for(var y=0; y<yama[h][x].length; y++) {
+                if((yama[h][x][y] != "") && (checkHai(h, x, y))) {  //牌があり、選択可能なら
+                   if(haiArray.indexOf(yama[h][x][y]) > -1) {       //選択可能な牌に同じ牌があるなら（＝選択可能な牌が２つある）
+                      //選択可能
+                      ret = true;                                   //手詰まりではない
+                      break;                   
+                   }
+                   haiArray.push(yama[h][x][y]);                    //選択可能な牌を配列haiArrayに保存
+                }
+            }
+        }
+    }
+    return ret;
+}
+</script>
+<style>
+#message {color: #CC0000;}
+#yama {position: relative;}
+#yama div {
+    position: absolute;
+    font-size: 40px;
+    text-align: center;
+    line-height: 65px;
+    width: 50px;
+    height: 65px;
+    border: 2px outset #99CC99;
+    border-width: 2px 8px 8px 2px;
+    border-radius: 10px;
+    background-color: #FFFFEE;
+    user-select: none;
+    cursor: pointer;
+}
+.selected {
+    border-color: #FF0000!important;
+    background-color: #FFEEEE!important;
+}
+</style>
+</head>
+<body onload="init()">
+<p>スイーツ上海</p>
+<input type="button" id="start" value="最初から" onclick="init()">
+<span id="message"></span>
+<hr>
+<div id="yama"></div>
+</body>
+</html>
